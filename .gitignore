@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Training artifacts (large)
+checkpoints/
+wandb/
+runs/
+*.ckpt
+*.safetensors
+*.bin
+*.pt
+*.pth
+
+# Datasets (regenerable)
+data/raw/
+data/processed/
+
+# Local GGUF artifacts
+*.gguf
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

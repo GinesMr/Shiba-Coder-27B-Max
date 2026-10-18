@@ -1,0 +1,92 @@
+# =============================================================================
+# Shiba Coder 27B Max — LoRA + SFT configuration
+# Mirrors the exact values used in the training run (see src/train.py)
+# =============================================================================
+
+# ---- Base model ----
+base_model: prism-ml/Bonsai-27B-unpacked
+model_class: Qwen3_5ForConditionalGeneration
+max_seq_length: 8192
+load_in_4bit: true           # 4-bit quantization to reduce VRAM
+load_in_8bit: false
+full_finetuning: false
+
+# ---- LoRA (Low-Rank Adaptation) ----
+lora:
+  r: 32                       # rank — 32 is a good balance for 27B
+  alpha: 64                   # scaling factor (2 * r is the usual rule of thumb)
+  dropout: 0.0                # no dropout (Unsloth recommendation for r < 64)
+  bias: none                  # do not train biases
+  use_rslora: false           # rank-stabilized LoRA — kept off
+  loftq_config: null
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+  use_gradient_checkpointing: unsloth
+  random_state: 3407
+
+# ---- Training ----
+training:
+  num_train_epochs: 1
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
+  gradient_accumulation_steps: 16   # effective batch = 16
+  learning_rate: 1.0e-4
+  warmup_ratio: 0.03
+  lr_scheduler_type: linear
+  optim: adamw_8bit
+  weight_decay: 0.001
+  max_grad_norm: 1.0
+  fp16: false
+  bf16: true
+  seed: 12181531
+  logging_steps: 10
+  eval_strategy: steps
+  eval_steps: 200
+  save_strategy: steps
+  save_steps: 200
+  save_total_limit: 1
+  report_to: wandb
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
+
+# ---- Data pipeline ----
+data:
+  random_seed: 12181531
+  max_context_window: 8192
+  test_size: 0.02
+  chat_template: qwen3-thinking
+  allowed_domains: [code, reasoning]
+  num_examples:
+    qwen_38_data_set: 5000
+    qwen_38_code: 10000
+    swe_next: 2000
+  sources:
+    - name: r0b0tlab/qwen3.8-max-distillation-50k
+      role: general reasoning + code (Qwen3.8-Max distillation)
+    - name: guell00/qwen-3.8-code
+      role: specialized code SFT
+    - name: TIGER-Lab/SWE-Next-SFT-Trajectories
+      role: software engineering / agent trajectories
+
+# ---- Chat template / masking ----
+chat_template:
+  name: qwen3-thinking
+  instruction_part: "<|im_start|>user\n"
+  response_part: "<|im_start|>assistant\n"
+
+# ---- Result (recorded from the actual run) ----
+result:
+  steps: 930
+  duration_hours: 27.30
+  trainable_params: 159383552
+  total_params: 27516112112
+  trainable_pct: 0.58
+  train_loss: 0.2722
+  eval_loss_best: 0.2888   # step 800
+  eval_loss_final: 0.2888  # step 800 (no later eval)

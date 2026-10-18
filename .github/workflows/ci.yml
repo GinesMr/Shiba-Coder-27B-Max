@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dev tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff pytest
+
+      - name: Ruff
+        run: ruff check .
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+      - name: Import smoke test (syntax / typing only)
+        run: |
+          python -m py_compile src/train.py
+          python -m py_compile data/prepare_dataset.py
+
+  notebook-sanitize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify no secrets in notebooks
+        run: |
+          if grep -RInE "wandb_v1_[A-Za-z0-9]{20,}|hf_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}" notebooks/; then
+            echo "Secret-like string found in notebooks" >&2
+            exit 1
+          fi
+          echo "Notebooks clean"
